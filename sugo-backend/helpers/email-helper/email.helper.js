@@ -68,7 +68,7 @@ const getEmailTemplate = (content, title = "") => `
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,0.08);overflow:hidden;">
           <tr>
             <td style="background:linear-gradient(135deg,#1E88E5 0%,#1565C0 100%);padding:30px;text-align:center;">
-              <img src="https://res.cloudinary.com/dd524q9vc/image/upload/v1757501045/Sugo/logo/logo_ifklls.png" alt="Sugo" style="width:140px;height:auto;"/>
+              <img src="https://res.cloudinary.com/dd524q9vc/image/upload/v1759753418/Sugo/logo/logo_wfpojd.jpg" alt="Sugo" style="width:140px;height:auto;"/>
               <h1 style="color:#fff;font-size:24px;margin:15px 0 0;font-weight:600;">Sugo</h1>
               <p style="color:#e3f2fd;font-size:14px;margin:8px 0 0;">Smart Connections, Real People 💫</p>
             </td>

@@ -25,6 +25,7 @@
  */
 
 const bcrypt = require("bcrypt");
+const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const SuperAdmin = require("../../models/super-admin-model/super-admin.model");
 const User = require("../../models/user-model/user.model");
