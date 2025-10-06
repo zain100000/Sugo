@@ -5,7 +5,7 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
+# Install dependencies (production only)
 RUN npm ci --only=production
 
 # Copy source code
@@ -18,8 +18,8 @@ RUN addgroup -g 1001 -S nodejs && \
 
 USER nodejs
 
-# Expose port 8000 (matches your app)
+# Expose port 8000
 EXPOSE 8000
 
-# Start the application (matches your npm start)
-CMD ["npm", "start"]
+# Start the application with node (not nodemon)
+CMD ["node", "app.js"]
