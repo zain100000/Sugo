@@ -1,0 +1,45 @@
+{
+  "name": "sugo-backend",
+  "version": "1.0.0",
+  "description": "The Node.js backend for the SUGO App powers a secure, scalable, and modular real-time social platform that supports two primary roles: Super Admin and Users. It manages core functionalities such as user authentication and verification, profile management, live voice & video room creation, in-room interactions, chat messaging, virtual gifting, and in-app economy handling. The backend exposes RESTful APIs to handle user profiles, rooms, gifts, subscriptions, chats, notifications, reports, and content moderation, while offering workflows for profile verification, automated keyword/photo filtering, and moderation of reported users, rooms, or content. Monetization features include coin packages, virtual gifts, paid room access, and subscription tiers, with payment integrations via JazzCash, Easypaisa, Stripe, and PayPal. Users receive real-time notifications for gifts, follows, messages, and system promotions. The Super Admin portal enables analytics dashboards for insights into user activity, room performance, engagement, top spenders, and revenue, while data privacy and encryption ensure compliance with global security standards. This backend seamlessly interacts with the mobile applications (Android/iOS) and the web-based Super Admin panel to deliver a reliable, high-performance, and safe live social experience",
+  "keywords": [
+    "Sugo",
+    "Backend",
+    "DatingApp",
+    "NodeJS"
+  ],
+  "license": "ISC",
+  "author": "zain100000",
+  "type": "commonjs",
+  "main": "app.js",
+  "scripts": {
+    "start": "nodemon app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "axios": "^1.11.0",
+    "bcrypt": "^6.0.0",
+    "body-parser": "^2.2.0",
+    "cloudinary": "^2.7.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "crypto": "^1.0.1",
+    "dotenv": "^17.2.1",
+    "express": "^4.21.2",
+    "express-mongo-sanitize": "^2.2.0",
+    "express-rate-limit": "^8.0.1",
+    "helmet": "^8.1.0",
+    "hpp": "^0.2.3",
+    "jsonwebtoken": "^9.0.2",
+    "mongodb": "^6.18.0",
+    "mongoose": "^8.18.0",
+    "multer": "^2.0.2",
+    "nodemailer": "^7.0.5",
+    "uuid": "^13.0.0",
+    "xss-clean": "^0.1.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10",
+    "prettier": "^3.6.2"
+  }
+}
