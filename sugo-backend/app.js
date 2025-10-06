@@ -90,17 +90,22 @@ const startServer = async () => {
     });
     console.log("✅ Connected to MongoDB successfully!");
 
-    const PORT = process.env.PORT || 8080;
-    app.listen(PORT, () => {
+    // FIX: Change from 8080 to 8000
+    const PORT = process.env.PORT || 8000; // ← CHANGED THIS LINE
+    const server = app.listen(PORT, "0.0.0.0", () => {
+      // ← ADDED '0.0.0.0'
       console.log(`🚀 Server is running on port ${PORT}`);
     });
+
+    return server; // ← ADDED THIS
   } catch (error) {
     console.error("❌ Error connecting to MongoDB:", error);
     process.exit(1);
   }
 };
 
-startServer();
+// FIX: Store the server instance
+const server = startServer();
 
 // ============================================================
 // 🔹 GRACEFUL SHUTDOWN HANDLERS
@@ -109,10 +114,14 @@ const shutdown = (signal) => {
   console.log(`⚙️  ${signal} received. Shutting down gracefully...`);
   mongoose.connection.close(() => {
     console.log("🧹 MongoDB connection closed.");
-    server.close(() => {
-      console.log("🧤 HTTP server closed. Goodbye 👋");
+    if (server) {
+      server.close(() => {
+        console.log("🧤 HTTP server closed. Goodbye 👋");
+        process.exit(0);
+      });
+    } else {
       process.exit(0);
-    });
+    }
   });
 };
 
