@@ -34,26 +34,26 @@ router.get(
   superAdminController.getSuperAdminById
 );
 
-// /**
-//  * @description Route to send an email for a password reset.
-//  */
-// router.post("/forgot-password", superAdminController.forgotPassword);
+/**
+ * @description Route to send an email for a password reset.
+ */
+router.post("/forgot-password", superAdminController.forgotPassword);
 
-// /**
-//  * @description Route to reset a password using a token.
-//  */
-// router.post(
-//   "/reset-password/:token",
-//   superAdminController.resetPasswordWithToken
-// );
+/**
+ * @description Route to reset a password using a token.
+ */
+router.post(
+  "/reset-password/:token",
+  superAdminController.resetPasswordWithToken
+);
 
-// /**
-//  * @description Route to verify a password reset token.
-//  */
-// router.post(
-//   "/verify-reset-token/:token",
-//   superAdminController.verifyResetToken
-// );
+/**
+ * @description Route to verify a password reset token.
+ */
+router.post(
+  "/verify-reset-token/:token",
+  superAdminController.verifyResetToken
+);
 
 /**
  * @description Route for Super Admin logout.
