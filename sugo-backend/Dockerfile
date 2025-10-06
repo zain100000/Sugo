@@ -18,8 +18,8 @@ RUN addgroup -g 1001 -S nodejs && \
 
 USER nodejs
 
-# Expose port 8000
-EXPOSE 8000
+# Expose port 8080
+EXPOSE 8080
 
 # Start the application with node (not nodemon)
 CMD ["node", "app.js"]
