@@ -1,25 +1,31 @@
+# Use Node 18 Alpine as the base image
 FROM node:18-alpine
 
+# Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package files first (better build caching)
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install all dependencies (including nodemon)
+RUN npm ci
 
-# Copy source code
+# Copy all source files
 COPY . .
 
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001 && \
-    chown -R nodejs:nodejs /app
+# Create a non-root user for security
+RUN addgroup -S appgroup && \
+    adduser -S appuser -G appgroup && \
+    chown -R appuser:appgroup /app
 
-USER nodejs
+# Switch to non-root user
+USER appuser
 
-# Expose port 8000 (matches your app)
+# Expose your application port
 EXPOSE 8000
 
-# Start the application
-CMD ["node", "app.js"]
+# Set environment to production
+ENV NODE_ENV=production
+
+# Start the app using the start script from package.json (nodemon app.js)
+CMD ["npm", "start"]
