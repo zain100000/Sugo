@@ -16,6 +16,7 @@ console.log("📋 Environment Check:");
 console.log("   - NODE_ENV:", process.env.NODE_ENV);
 console.log("   - PORT:", process.env.PORT);
 console.log("   - MONGODB_URI:", process.env.MONGODB_URI ? "Set" : "NOT SET");
+console.log("   - VERCEL:", process.env.VERCEL ? "Yes" : "No");
 
 // ============================================================
 // 🔹 Core Middlewares
@@ -26,7 +27,7 @@ app.use(express.json({ limit: "20kb" }));
 app.use(express.urlencoded({ extended: true, limit: "20kb" }));
 
 const corsOptions = {
-  origin: process.env.ALLOWED_ORIGINS || "*",
+  origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : "*",
   credentials: true,
   optionsSuccessStatus: 201,
 };
@@ -34,17 +35,20 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 app.use((req, res, next) => {
-  res.setHeader(
-    "Access-Control-Allow-Origin",
-    process.env.ALLOWED_ORIGINS || "*"
-  );
+  const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : '*';
+  const origin = req.headers.origin;
+  
+  if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+  }
+  
   res.setHeader(
     "Access-Control-Allow-Headers",
     "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Content-Type-Options"
   );
   res.setHeader(
     "Access-Control-Allow-Methods",
-    "GET, POST, PATCH, DELETE, OPTIONS"
+    "GET, POST, PATCH, DELETE, OPTIONS, PUT"
   );
   res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -52,6 +56,45 @@ app.use((req, res, next) => {
   res.setHeader("X-XSS-Protection", "1; mode=block");
   next();
 });
+
+// ============================================================
+// 🔹 DATABASE CONNECTION (Serverless Optimized)
+// ============================================================
+const connectDB = async () => {
+  // Check if MongoDB URI is set
+  if (!process.env.MONGODB_URI) {
+    console.error("❌ MONGODB_URI environment variable is not set");
+    return false;
+  }
+
+  // If already connected, return the connection
+  if (mongoose.connection.readyState === 1) {
+    console.log("✅ Using existing MongoDB connection");
+    return true;
+  }
+
+  try {
+    console.log("🧩 Connecting to MongoDB...");
+    
+    await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000, // Reduced for serverless
+      socketTimeoutMS: 45000,
+      maxPoolSize: 10,
+      minPoolSize: 2, // Added for serverless
+      retryWrites: true,
+      w: "majority",
+    });
+
+    console.log("✅ Connected to MongoDB successfully!");
+    return true;
+  } catch (error) {
+    console.error("❌ MongoDB connection error:", error.message);
+    return false;
+  }
+};
+
+// Global variable to cache DB connection
+let isDBConnected = false;
 
 // ============================================================
 // 🔹 API ROUTES
@@ -62,26 +105,69 @@ app.use("/api/super-admin", superAdminRoute);
 // ============================================================
 // 🔹 HEALTH CHECKS
 // ============================================================
-app.get("/api/health", (req, res) => {
+app.get("/api/health", async (req, res) => {
+  const dbStatus = mongoose.connection.readyState === 1 ? "Connected" : "Disconnected";
+  
   res.status(200).json({
     success: true,
     message: "Server is healthy 🩺",
     timestamp: new Date().toISOString(),
-    database:
-      mongoose.connection.readyState === 1 ? "Connected" : "Disconnected",
+    environment: process.env.NODE_ENV,
+    database: dbStatus,
+    platform: "Vercel Serverless",
   });
 });
 
 app.get("/", (req, res) => {
   res.status(200).json({
     success: true,
-    message: "Backend running successfully 🚀",
+    message: "SUGO Backend running successfully 🚀",
+    environment: process.env.NODE_ENV,
+    platform: "Vercel",
+    timestamp: new Date().toISOString(),
   });
+});
+
+// ============================================================
+// 🔹 DB CONNECTION MIDDLEWARE
+// ============================================================
+app.use(async (req, res, next) => {
+  // Skip DB connection for health checks
+  if (req.path === '/api/health' || req.path === '/') {
+    return next();
+  }
+
+  try {
+    if (!isDBConnected) {
+      isDBConnected = await connectDB();
+    }
+    
+    if (!isDBConnected && mongoose.connection.readyState !== 1) {
+      return res.status(503).json({
+        success: false,
+        message: "Database connection unavailable",
+        error: "Service temporarily unavailable"
+      });
+    }
+    
+    next();
+  } catch (error) {
+    console.error("Database connection middleware error:", error);
+    res.status(503).json({
+      success: false,
+      message: "Database connection error",
+      error: process.env.NODE_ENV === "production" ? {} : error.message
+    });
+  }
 });
 
 // 404 Handler
 app.use((req, res) => {
-  res.status(404).json({ success: false, message: "API endpoint not found" });
+  res.status(404).json({ 
+    success: false, 
+    message: "API endpoint not found",
+    path: req.path 
+  });
 });
 
 // ============================================================
@@ -97,87 +183,58 @@ app.use((error, req, res, next) => {
 });
 
 // ============================================================
-// 🔹 MONGODB CONNECTION + SERVER START
+// 🔹 SERVER START (Only for local development)
 // ============================================================
-const startServer = async () => {
-  try {
-    // Check if MongoDB URI is set
-    if (!process.env.MONGODB_URI) {
-      throw new Error("MONGODB_URI environment variable is not set");
+if (require.main === module) {
+  const startServer = async () => {
+    try {
+      await connectDB();
+      
+      const PORT = process.env.PORT || 8000;
+      const server = app.listen(PORT, "0.0.0.0", () => {
+        console.log(`🚀 Server is running on port ${PORT}`);
+        console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
+      });
+
+      // Graceful shutdown handlers for local development
+      const shutdown = (signal) => {
+        console.log(`⚙️  ${signal} received. Shutting down gracefully...`);
+        server.close(() => {
+          console.log("🧤 HTTP server closed.");
+          mongoose.connection.close(false, () => {
+            console.log("🧹 MongoDB connection closed. Goodbye 👋");
+            process.exit(0);
+          });
+        });
+      };
+
+      process.on("SIGINT", () => shutdown("SIGINT"));
+      process.on("SIGTERM", () => shutdown("SIGTERM"));
+
+    } catch (error) {
+      console.error("❌ FATAL: Failed to start server:", error);
+      process.exit(1);
     }
+  };
 
-    console.log("🧩 Connecting to MongoDB...");
-
-    await mongoose.connect(process.env.MONGODB_URI, {
-      serverSelectionTimeoutMS: 10000,
-      socketTimeoutMS: 45000,
-      maxPoolSize: 10,
-      retryWrites: true,
-      w: "majority",
-    });
-
-    console.log("✅ Connected to MongoDB successfully!");
-
-    const PORT = process.env.PORT || 8000;
-    const server = app.listen(PORT, "0.0.0.0", () => {
-      console.log(`🚀 Server is running on port ${PORT}`);
-    });
-
-    return server;
-  } catch (error) {
-    console.error("❌ FATAL: Failed to start server:", error);
-    console.error("💡 Check your MONGODB_URI environment variable");
-    process.exit(1);
-  }
-};
-
-// ============================================================
-// 🔹 START THE SERVER
-// ============================================================
-let server;
-startServer()
-  .then((s) => {
-    server = s;
-  })
-  .catch((error) => {
-    console.error("💥 Failed to start server:", error);
-    process.exit(1);
-  });
-
-// ============================================================
-// 🔹 GRACEFUL SHUTDOWN HANDLERS
-// ============================================================
-const shutdown = (signal) => {
-  console.log(`⚙️  ${signal} received. Shutting down gracefully...`);
-  if (mongoose.connection.readyState === 1) {
-    mongoose.connection.close(false, () => {
-      console.log("🧹 MongoDB connection closed.");
-    });
-  }
-  if (server) {
-    server.close(() => {
-      console.log("🧤 HTTP server closed. Goodbye 👋");
-      process.exit(0);
-    });
-  } else {
-    process.exit(0);
-  }
-};
-
-process.on("SIGINT", () => shutdown("SIGINT"));
-process.on("SIGTERM", () => shutdown("SIGTERM"));
+  startServer();
+}
 
 // ============================================================
 // 🔹 UNCAUGHT EXCEPTION HANDLERS
 // ============================================================
 process.on("uncaughtException", (error) => {
   console.error("💥 UNCAUGHT EXCEPTION:", error);
-  process.exit(1);
+  if (require.main === module) {
+    process.exit(1);
+  }
 });
 
 process.on("unhandledRejection", (reason, promise) => {
   console.error("💥 UNHANDLED REJECTION at:", promise, "reason:", reason);
-  process.exit(1);
+  if (require.main === module) {
+    process.exit(1);
+  }
 });
 
 module.exports = app;
