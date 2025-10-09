@@ -27,7 +27,9 @@ app.use(express.json({ limit: "20kb" }));
 app.use(express.urlencoded({ extended: true, limit: "20kb" }));
 
 const corsOptions = {
-  origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : "*",
+  origin: process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(",")
+    : "*",
   credentials: true,
   optionsSuccessStatus: 201,
 };
@@ -35,13 +37,15 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 app.use((req, res, next) => {
-  const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : '*';
+  const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(",")
+    : "*";
   const origin = req.headers.origin;
-  
-  if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+
+  if (allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin || "*");
   }
-  
+
   res.setHeader(
     "Access-Control-Allow-Headers",
     "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Content-Type-Options"
@@ -75,7 +79,7 @@ const connectDB = async () => {
 
   try {
     console.log("🧩 Connecting to MongoDB...");
-    
+
     await mongoose.connect(process.env.MONGODB_URI, {
       serverSelectionTimeoutMS: 5000, // Reduced for serverless
       socketTimeoutMS: 45000,
@@ -106,8 +110,9 @@ app.use("/api/super-admin", superAdminRoute);
 // 🔹 HEALTH CHECKS
 // ============================================================
 app.get("/api/health", async (req, res) => {
-  const dbStatus = mongoose.connection.readyState === 1 ? "Connected" : "Disconnected";
-  
+  const dbStatus =
+    mongoose.connection.readyState === 1 ? "Connected" : "Disconnected";
+
   res.status(200).json({
     success: true,
     message: "Server is healthy 🩺",
@@ -133,7 +138,7 @@ app.get("/", (req, res) => {
 // ============================================================
 app.use(async (req, res, next) => {
   // Skip DB connection for health checks
-  if (req.path === '/api/health' || req.path === '/') {
+  if (req.path === "/api/health" || req.path === "/") {
     return next();
   }
 
@@ -141,32 +146,32 @@ app.use(async (req, res, next) => {
     if (!isDBConnected) {
       isDBConnected = await connectDB();
     }
-    
+
     if (!isDBConnected && mongoose.connection.readyState !== 1) {
       return res.status(503).json({
         success: false,
         message: "Database connection unavailable",
-        error: "Service temporarily unavailable"
+        error: "Service temporarily unavailable",
       });
     }
-    
+
     next();
   } catch (error) {
     console.error("Database connection middleware error:", error);
     res.status(503).json({
       success: false,
       message: "Database connection error",
-      error: process.env.NODE_ENV === "production" ? {} : error.message
+      error: process.env.NODE_ENV === "production" ? {} : error.message,
     });
   }
 });
 
 // 404 Handler
 app.use((req, res) => {
-  res.status(404).json({ 
-    success: false, 
+  res.status(404).json({
+    success: false,
     message: "API endpoint not found",
-    path: req.path 
+    path: req.path,
   });
 });
 
@@ -183,42 +188,11 @@ app.use((error, req, res, next) => {
 });
 
 // ============================================================
-// 🔹 SERVER START (Only for local development)
+// 🔹 Vercel Export
 // ============================================================
-if (require.main === module) {
-  const startServer = async () => {
-    try {
-      await connectDB();
-      
-      const PORT = process.env.PORT || 8000;
-      const server = app.listen(PORT, "0.0.0.0", () => {
-        console.log(`🚀 Server is running on port ${PORT}`);
-        console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
-      });
 
-      // Graceful shutdown handlers for local development
-      const shutdown = (signal) => {
-        console.log(`⚙️  ${signal} received. Shutting down gracefully...`);
-        server.close(() => {
-          console.log("🧤 HTTP server closed.");
-          mongoose.connection.close(false, () => {
-            console.log("🧹 MongoDB connection closed. Goodbye 👋");
-            process.exit(0);
-          });
-        });
-      };
-
-      process.on("SIGINT", () => shutdown("SIGINT"));
-      process.on("SIGTERM", () => shutdown("SIGTERM"));
-
-    } catch (error) {
-      console.error("❌ FATAL: Failed to start server:", error);
-      process.exit(1);
-    }
-  };
-
-  startServer();
-}
+connectDB(); // connect once at startup for serverless function reuse
+module.exports = app;
 
 // ============================================================
 // 🔹 UNCAUGHT EXCEPTION HANDLERS
